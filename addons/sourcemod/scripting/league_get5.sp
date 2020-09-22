@@ -87,13 +87,6 @@ ConVar g_VersionCvar;
 // Hooked cvars built into csgo
 ConVar g_CoachingEnabledCvar;
 
-/** LOL **/
-bool g_bVoteStart = false;
-int g_iVoteCts = 0;
-int g_iVoteTs = 0;
-bool g_bPlayerCanVote[MAXPLAYERS + 1] = {true, ...};
-Handle g_bSideVoteTimer = null;
-
 /** Series config game-state **/
 int g_MapsToWin = 1;  // Maps needed to win the series.
 bool g_BO2Match = false;
@@ -349,8 +342,12 @@ public void OnPluginStart() {
   AddAliasedCommand("unpause", Command_Unpause, "Unpauses the game");
   AddAliasedCommand("coach", Command_SmCoach, "Marks a client as a coach for their team");
   AddAliasedCommand("stop", Command_Stop, "Elects to stop the game to reload a backup file");
-  AddAliasedCommand("ct", Command_VoteCt, "Vote for Counter-Terrorist team.");
-  AddAliasedCommand("t", Command_VoteT, "Voted for the terrorist team");
+  AddAliasedCommand("stay", Command_Stay,
+                    "Elects to stay on the current team after winning a knife round");
+  AddAliasedCommand("swap", Command_Swap,
+                    "Elects to swap the current teams after winning a knife round");
+  AddAliasedCommand("t", Command_T, "Elects to start on T side after winning a knife round");
+  AddAliasedCommand("ct", Command_Ct, "Elects to start on CT side after winning a knife round");
 
   /** Admin/server commands **/
   RegAdminCmd(
@@ -406,7 +403,7 @@ public void OnPluginStart() {
   HookEvent("player_connect_full", Event_PlayerConnectFull);
   HookEvent("player_disconnect", Event_PlayerDisconnect);
   HookEvent("player_team", Event_OnPlayerTeam, EventHookMode_Pre);
-  HookEvent("round_announce_match_start", Event_WarmupEnd);
+  //HookEvent("round_announce_match_start", Event_WarmupEnd);
 
   Stats_PluginStart();
   Stats_InitSeries();
@@ -548,7 +545,7 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
     EndSeries();
   }
 }
-
+/*
 public Action Event_WarmupEnd(Event event, const char[] name, bool dontBroadcast) {
   if (g_GameState == Get5State_Warmup) {
     if (GetMatchClientCount() >= (g_PlayersPerTeam * 2) - g_RemainingMatchPlayers.IntValue) {
@@ -565,7 +562,7 @@ public Action Event_WarmupEnd(Event event, const char[] name, bool dontBroadcast
     }
   }
 }
-
+*/
 public void OnMapStart() {
   g_MapChangePending = false;
   g_HasKnifeRoundStarted = false;
@@ -628,6 +625,18 @@ public Action Timer_WarmupLeft(Handle timer) {
     
     if (g_WarmupTimeLeft == 0) {
       if (GetMatchClientCount() == 0) {
+        g_ForceWinnerSignal = true;
+        ChangeState(Get5State_None);
+        EndSeries();
+      }
+      else if (GetMatchClientCount() >= (g_PlayersPerTeam * 2) - g_RemainingMatchPlayers.IntValue) {
+        if (!g_HasKnifeRoundStarted) {
+          StartGame(true);
+        }
+      }
+      else {
+        Get5_MessageToAll("%t", "NotAllPlayersConnected");
+        AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
         g_ForceWinnerSignal = true;
         ChangeState(Get5State_None);
         EndSeries();
@@ -1084,9 +1093,6 @@ public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 
     g_KnifeWinnerTeam = CSTeamToMatchTeam(winningCSTeam);
     Get5_MessageToAll("%t", "WaitingForEnemySwapInfoMessage",g_FormattedTeamNames[g_KnifeWinnerTeam]);
-    Get5_MessageToTeam(g_KnifeWinnerTeam, "%t", "VoteMessage");
-    g_bVoteStart = true;
-    g_bSideVoteTimer = CreateTimer(15.0, Timer_VoteSide);
 
     if (g_TeamTimeToKnifeDecisionCvar.FloatValue > 0)
       CreateTimer(g_TeamTimeToKnifeDecisionCvar.FloatValue, Timer_ForceKnifeDecision);
@@ -1194,7 +1200,7 @@ public void StartGame(bool knifeRound) {
     }
 
     g_KnifeChangedCvars = ExecuteAndSaveCvars(KNIFE_CONFIG);
-    CreateTimer(1.0, StartKnifeRound);
+    CreateTimer(0.1, StartKnifeRound);
   } else {
     LogDebug("StartGame: about to go live");
     ChangeState(Get5State_GoingLive);
@@ -1207,8 +1213,8 @@ public Action Timer_PostKnife(Handle timer) {
     RestoreCvars(g_KnifeChangedCvars, true);
     
   }
-  ExecCfg(g_WarmupCfgCvar);
-  EnsurePausedWarmup();
+  //ExecCfg(g_WarmupCfgCvar);
+  //EnsurePausedWarmup();
 }
 
 public Action StopDemo(Handle timer) {
