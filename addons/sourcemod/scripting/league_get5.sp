@@ -111,6 +111,7 @@ ArrayList g_CvarNames = null;
 ArrayList g_CvarValues = null;
 bool g_InScrimMode = false;
 bool g_HasKnifeRoundStarted = false;
+bool g_IsMatchOver = false;
 
 /** Other state **/
 Get5State g_GameState = Get5State_None;
@@ -403,7 +404,6 @@ public void OnPluginStart() {
   HookEvent("player_connect_full", Event_PlayerConnectFull);
   HookEvent("player_disconnect", Event_PlayerDisconnect);
   HookEvent("player_team", Event_OnPlayerTeam, EventHookMode_Pre);
-  //HookEvent("round_announce_match_start", Event_WarmupEnd);
 
   Stats_PluginStart();
   Stats_InitSeries();
@@ -494,9 +494,9 @@ public void OnClientPutInServer(int client) {
     }
 
     if (connectedPlayers == g_PlayersPerTeam * 2) {
-      if (g_WarmupTimeLeft > 30) {
-        g_WarmupTimeLeft = 30;
-        ServerCommand("mp_warmuptime 30");
+      if (g_WarmupTimeLeft > 45) {
+        g_WarmupTimeLeft = 45;
+        ServerCommand("mp_warmuptime 45");
       }
     }
   }
@@ -537,35 +537,19 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
   int client = GetClientOfUserId(event.GetInt("userid"));
   EventLogger_PlayerDisconnect(client);
 
-  if (g_EndMatchOnEmptyServerCvar.BoolValue && g_GameState > Get5State_Warmup &&
+  if (g_EndMatchOnEmptyServerCvar.BoolValue && g_GameState > Get5State_Warmup && !g_IsMatchOver &&
       g_GameState < Get5State_PostGame && (GetTeam1ClientCount() <= 1 || GetTeam2ClientCount() <= 1) && !g_MapChangePending) {
     Get5_MessageToAll("%t", "CancelMatchFullTeamDisconnected");
-    AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
     ChangeState(Get5State_None);
+    AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
     EndSeries();
   }
 }
-/*
-public Action Event_WarmupEnd(Event event, const char[] name, bool dontBroadcast) {
-  if (g_GameState == Get5State_Warmup) {
-    if (GetMatchClientCount() >= (g_PlayersPerTeam * 2) - g_RemainingMatchPlayers.IntValue) {
-      if (!g_HasKnifeRoundStarted) {
-        StartGame(true);
-      }
-    }
-    else {
-      Get5_MessageToAll("%t", "NotAllPlayersConnected");
-      AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
-      g_ForceWinnerSignal = true;
-      ChangeState(Get5State_None);
-      EndSeries();
-    }
-  }
-}
-*/
+
 public void OnMapStart() {
   g_MapChangePending = false;
   g_HasKnifeRoundStarted = false;
+  g_IsMatchOver = false;
   DeleteOldBackups();
 
   LOOP_TEAMS(team) {
@@ -836,6 +820,7 @@ public Action Timer_ReplenishMoney(Handle timer, int client) {
 public Action Event_MatchOver(Event event, const char[] name, bool dontBroadcast) {
   LogDebug("Event_MatchOver");
   if (g_GameState == Get5State_Live) {
+    g_IsMatchOver = true;
     // Figure out who won
     int t1score = CS_GetTeamScore(MatchTeamToCSTeam(MatchTeam_Team1));
     int t2score = CS_GetTeamScore(MatchTeamToCSTeam(MatchTeam_Team2));
@@ -978,6 +963,7 @@ public void KickClientsOnEnd() {
 }
 
 public void EndSeries() {
+  g_IsMatchOver = false;
   DelayFunction(10.0, KickClientsOnEnd);
   StopRecording();
 
