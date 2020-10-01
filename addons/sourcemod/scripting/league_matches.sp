@@ -217,18 +217,18 @@ public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Sco
 }
 
 public void AddPlayerStats(KeyValues kv, MatchTeam team) {
-  //char name[MAX_NAME_LENGTH];
+  char name[MAX_NAME_LENGTH];
   char auth[AUTH_LENGTH];
-  //char nameSz[MAX_NAME_LENGTH * 2 + 1];
+  char nameSz[MAX_NAME_LENGTH * 2 + 1];
   char authSz[AUTH_LENGTH * 2 + 1];
   int mapNumber = MapNumber();
 
   if (kv.GotoFirstSubKey()) {
     do {
       kv.GetSectionName(auth, sizeof(auth));
-      //kv.GetString("name", name, sizeof(name));
+      kv.GetString("name", name, sizeof(name));
       db.Escape(auth, authSz, sizeof(authSz));
-      //db.Escape(name, nameSz, sizeof(nameSz));
+      db.Escape(name, nameSz, sizeof(nameSz));
 
       int kills = kv.GetNum(STAT_KILLS);
       int deaths = kv.GetNum(STAT_DEATHS);
@@ -262,7 +262,7 @@ public void AddPlayerStats(KeyValues kv, MatchTeam team) {
       // (aka just a few more) it will cause runtime errors and the Format will fail.
       Format(queryBuffer, sizeof(queryBuffer), "REPLACE INTO `matches_players` \
                 (matchid, mapnumber, steam, team, \
-                rounds_played, kills, deaths, flashbang_assists, \
+                rounds_played, name, kills, deaths, flashbang_assists, \
                 assists, playerscore, teamkills, headshot_kills, damage, \
                 bomb_plants, bomb_defuses, \
                 v1, v2, v3, v4, v5, \
@@ -270,13 +270,13 @@ public void AddPlayerStats(KeyValues kv, MatchTeam team) {
                 firstkill_t, firstkill_ct, firstdeath_t, firstdeath_ct \
                 ) VALUES \
                 (%d, %d, '%s', '%s', \
-                %d, %d, %d, %d, \
+                %d, '%s', %d, %d, %d, \
                 %d, %d, %d, %d, %d, \
                 %d, %d, \
                 %d, %d, %d, %d, %d, \
                 %d, %d, %d, %d, \
                 %d, %d, %d, %d)",
-             g_MatchID, mapNumber, authSz, teamString, roundsplayed, kills, deaths,
+             g_MatchID, mapNumber, authSz, teamString, roundsplayed, nameSz, kills, deaths,
              flashbang_assists, assists, playerscore, teamkills, headshot_kills, damage, plants, defuses, v1, v2,
              v3, v4, v5, k2, k3, k4, k5, firstkill_t, firstkill_ct, firstdeath_t, firstdeath_ct);
 
