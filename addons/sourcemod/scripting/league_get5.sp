@@ -193,6 +193,7 @@ Handle g_OnPreLoadMatchConfig = null;
 Handle g_OnRoundStatsUpdated = null;
 Handle g_OnSeriesInit = null;
 Handle g_OnSeriesResult = null;
+Handle g_WarmupTimer = null;
 
 #include "get5/util.sp"
 #include "get5/version.sp"
@@ -569,7 +570,14 @@ public void OnMapStart() {
   /** Start any repeating timers **/
   if (g_GameState == Get5State_Warmup) {
     g_WarmupTimeLeft = GetConVarInt(FindConVar("mp_warmuptime"));
-    CreateTimer(1.0, Timer_WarmupLeft, _, TIMER_REPEAT);
+    g_WarmupTimer = CreateTimer(1.0, Timer_WarmupLeft, _, TIMER_REPEAT);
+  }
+}
+
+public void OnMapEnd() {
+  if (g_WarmupTimer != null) {
+    KillTimer(g_WarmupTimer);
+    g_WarmupTimer = null;
   }
 }
 
@@ -624,6 +632,11 @@ public Action Timer_WarmupLeft(Handle timer) {
         g_ForceWinnerSignal = true;
         ChangeState(Get5State_None);
         EndSeries();
+      }
+
+      if (g_WarmupTimer != null) {
+        KillTimer(g_WarmupTimer);
+        g_WarmupTimer = null;
       }
       return Plugin_Stop;
     }
