@@ -491,6 +491,7 @@ public void OnClientPutInServer(int client) {
     int connectedPlayers = GetMatchClientCount();
     if (connectedPlayers <= 1) {
       EnsurePausedWarmup();
+    }
 
     if (connectedPlayers == g_PlayersPerTeam * 2) {
       if (g_WarmupTimeLeft > 45) {
