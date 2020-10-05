@@ -201,17 +201,14 @@ stock bool InFreezeTime() {
 }
 
 stock void EnsurePausedWarmup() {
+  ServerCommand("mp_warmup_pausetimer 0");
   ServerCommand("mp_warmuptime %d", g_WarmupTimeLeft);
   ServerCommand("mp_warmup_start");
 }
 
 stock void EndWarmup(int time = 0) {
-  if (time == 0) {
-    ServerCommand("mp_warmup_end");
-  } else {
-    ServerCommand("mp_warmup_pausetimer 0");
-    ServerCommand("mp_warmuptime %d", time);
-  }
+  ServerCommand("mp_warmup_pausetimer 0");
+  ServerCommand("mp_warmuptime %d", time);
 }
 
 stock bool IsPaused() {

@@ -51,6 +51,7 @@ public void EndKnifeRound(bool swap) {
   PerformSideSwap(swap);
   EventLogger_KnifeWon(g_KnifeWinnerTeam, swap);
   ChangeState(Get5State_GoingLive);
+  EndWarmup();
   CreateTimer(3.0, StartGoingLive, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 

@@ -490,14 +490,12 @@ public void OnClientPutInServer(int client) {
   if (g_GameState <= Get5State_Warmup && g_GameState != Get5State_None) {
     int connectedPlayers = GetMatchClientCount();
     if (connectedPlayers <= 1) {
-      ExecCfg(g_WarmupCfgCvar);
       EnsurePausedWarmup();
-    }
 
     if (connectedPlayers == g_PlayersPerTeam * 2) {
       if (g_WarmupTimeLeft > 45) {
         g_WarmupTimeLeft = 45;
-        ServerCommand("mp_warmuptime 45");
+        EndWarmup(45);
       }
     }
   }
@@ -1210,8 +1208,9 @@ public void StartGame(bool knifeRound) {
 public Action Timer_PostKnife(Handle timer) {
   if (g_KnifeChangedCvars != null) {
     RestoreCvars(g_KnifeChangedCvars, true);
-    
   }
+  ServerCommand("mp_warmup_pausetimer 1");
+  ServerCommand("mp_warmup_start");
   //ExecCfg(g_WarmupCfgCvar);
   //EnsurePausedWarmup();
 }
