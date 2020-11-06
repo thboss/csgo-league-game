@@ -632,6 +632,7 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
         EndSeries();
       }
 
+      g_WarmupTimeLeft = g_TeamTimeToStartCvar.IntValue;
       return Plugin_Stop;
     }
     
