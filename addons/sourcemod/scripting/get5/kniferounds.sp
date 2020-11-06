@@ -3,7 +3,6 @@ public Action StartKnifeRound(Handle timer) {
   g_PendingSideSwap = false;
 
   Get5_MessageToAll("%t", "KnifeIn5SecInfoMessage");
-  //EndWarmup();
   CreateTimer(5.0, Timer_AnnounceKnife);
   return Plugin_Handled;
 }

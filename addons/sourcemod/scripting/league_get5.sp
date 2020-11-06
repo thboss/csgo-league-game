@@ -73,6 +73,7 @@ ConVar g_SetHostnameCvar;
 ConVar g_StatsPathFormatCvar;
 ConVar g_StopCommandEnabledCvar;
 ConVar g_TeamTimeToKnifeDecisionCvar;
+ConVar g_TeamTimeToStartCvar;
 ConVar g_TimeFormatCvar;
 ConVar g_VetoConfirmationTimeCvar;
 ConVar g_VetoCountdownCvar;
@@ -152,7 +153,7 @@ bool g_TeamGivenStopCommand[MATCHTEAM_COUNT];
 bool g_InExtendedPause;
 int g_TeamPauseTimeUsed[MATCHTEAM_COUNT];
 int g_TeamPausesUsed[MATCHTEAM_COUNT];
-int g_WarmupTimeLeft = 300;
+int g_WarmupTimeLeft;
 char g_DefaultTeamColors[][] = {
     TEAM1_COLOR, TEAM2_COLOR, "{NORMAL}", "{NORMAL}",
 };
@@ -193,7 +194,6 @@ Handle g_OnPreLoadMatchConfig = null;
 Handle g_OnRoundStatsUpdated = null;
 Handle g_OnSeriesInit = null;
 Handle g_OnSeriesResult = null;
-Handle g_WarmupTimer = null;
 
 #include "get5/util.sp"
 #include "get5/version.sp"
@@ -306,6 +306,9 @@ public void OnPluginStart() {
   g_StopCommandEnabledCvar =
       CreateConVar("get5_stop_command_enabled", "1",
                    "Whether clients can use the !stop command to restore to the last round");
+  g_TeamTimeToStartCvar = CreateConVar(
+      "get5_time_to_start", "0",
+      "Time (in seconds) teams have to ready up before forfeiting the match, 0=unlimited");
   g_RemainingMatchPlayers = CreateConVar("get5_remaining_match_players_not_connected", "0");
   g_TeamTimeToKnifeDecisionCvar = CreateConVar(
       "get5_time_to_make_knife_decision", "30",
@@ -427,7 +430,6 @@ public void OnPluginStart() {
     g_TeamAuths[i] = new ArrayList(AUTH_LENGTH);
   }
   g_PlayerNames = new StringMap();
-  g_WarmupTimeLeft = GetConVarInt(FindConVar("mp_warmuptime"));
 
   /** Create forwards **/
   g_OnBackupRestore = CreateGlobalForward("Get5_OnBackupRestore", ET_Ignore);
@@ -493,11 +495,9 @@ public void OnClientPutInServer(int client) {
       EnsurePausedWarmup();
     }
 
-    if (connectedPlayers == g_PlayersPerTeam * 2) {
-      if (g_WarmupTimeLeft > 45) {
+    if (connectedPlayers == g_PlayersPerTeam * 2 && g_WarmupTimeLeft > 45) {
         g_WarmupTimeLeft = 45;
         EndWarmup(45);
-      }
     }
   }
 
@@ -538,7 +538,7 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
   EventLogger_PlayerDisconnect(client);
 
   if (g_EndMatchOnEmptyServerCvar.BoolValue && g_GameState > Get5State_Warmup && !g_IsMatchOver &&
-      g_GameState < Get5State_PostGame && (GetTeam1ClientCount() <= 1 || GetTeam2ClientCount() <= 1) && !g_MapChangePending) {
+      g_GameState < Get5State_PostGame && (GetTeam1ClientCount() <= 1 || GetTeam2ClientCount() <= 1)) {
     Get5_MessageToAll("%t", "CancelMatchFullTeamDisconnected");
     ChangeState(Get5State_None);
     AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
@@ -568,15 +568,14 @@ public void OnMapStart() {
   }
   /** Start any repeating timers **/
   if (g_GameState == Get5State_Warmup) {
-    g_WarmupTimeLeft = GetConVarInt(FindConVar("mp_warmuptime"));
-    g_WarmupTimer = CreateTimer(1.0, Timer_WarmupLeft, _, TIMER_REPEAT);
-  }
-}
 
-public void OnMapEnd() {
-  if (g_WarmupTimer != null) {
-    KillTimer(g_WarmupTimer);
-    g_WarmupTimer = null;
+    if (g_TeamTimeToStartCvar.IntValue < 60) {
+      g_TeamTimeToStartCvar.SetInt(60);
+    }
+
+    g_WarmupTimeLeft = g_TeamTimeToStartCvar.IntValue;
+    StartWarmup();
+    CreateTimer(1.0, Timer_WaitingForConnectPlayers, _, TIMER_REPEAT);
   }
 }
 
@@ -596,7 +595,7 @@ public void OnConfigsExecuted() {
   }
 }
 
-public Action Timer_WarmupLeft(Handle timer) {
+public Action Timer_WaitingForConnectPlayers(Handle timer) {
   if (g_GameState == Get5State_None) {
     return Plugin_Continue;
   }
@@ -605,7 +604,7 @@ public Action Timer_WarmupLeft(Handle timer) {
   CheckTeamNameStatus(MatchTeam_Team2);
 
   // Handle ready checks for warmup, provided we are not waiting for a map change
-  if (g_GameState == Get5State_Warmup && !g_MapChangePending) {
+  if (g_GameState == Get5State_Warmup) {
     // We don't wait for spectators when restoring backups
     if (g_WaitingForRoundBackup) {
       LogDebug("Timer_CheckReady: restoring from backup");
@@ -633,13 +632,9 @@ public Action Timer_WarmupLeft(Handle timer) {
         EndSeries();
       }
 
-      if (g_WarmupTimer != null) {
-        KillTimer(g_WarmupTimer);
-        g_WarmupTimer = null;
-      }
       return Plugin_Stop;
     }
-
+    
     g_WarmupTimeLeft--;
   }
 
@@ -1210,10 +1205,9 @@ public Action Timer_PostKnife(Handle timer) {
   if (g_KnifeChangedCvars != null) {
     RestoreCvars(g_KnifeChangedCvars, true);
   }
-  ServerCommand("mp_warmup_pausetimer 1");
-  ServerCommand("mp_warmup_start");
-  //ExecCfg(g_WarmupCfgCvar);
-  //EnsurePausedWarmup();
+
+  ExecCfg(g_WarmupCfgCvar);
+  EnsurePausedWarmup();
 }
 
 public Action StopDemo(Handle timer) {
