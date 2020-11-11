@@ -78,7 +78,7 @@ ConVar g_TimeFormatCvar;
 ConVar g_VetoConfirmationTimeCvar;
 ConVar g_VetoCountdownCvar;
 ConVar g_WarmupCfgCvar;
-ConVar g_RemainingMatchPlayers;
+ConVar g_UnconnectedPlayersRemaining;
 
 // Autoset convars (not meant for users to set)
 ConVar g_GameStateCvar;
@@ -112,7 +112,7 @@ ArrayList g_CvarNames = null;
 ArrayList g_CvarValues = null;
 bool g_InScrimMode = false;
 bool g_HasKnifeRoundStarted = false;
-bool g_IsMatchOver = false;
+bool g_IsMapOver = false;
 
 /** Other state **/
 Get5State g_GameState = Get5State_None;
@@ -309,7 +309,8 @@ public void OnPluginStart() {
   g_TeamTimeToStartCvar = CreateConVar(
       "get5_time_to_start", "0",
       "Time (in seconds) teams have to ready up before forfeiting the match, 0=unlimited");
-  g_RemainingMatchPlayers = CreateConVar("get5_remaining_match_players_not_connected", "0");
+  g_UnconnectedPlayersRemaining = CreateConVar("get5_remaining_not_connected_players_to_start", "0",
+      "Number of remaining players are not connected to start the match on the warmup end, set to 0 to disable");
   g_TeamTimeToKnifeDecisionCvar = CreateConVar(
       "get5_time_to_make_knife_decision", "30",
       "Time (in seconds) a team has to make a !stay/!swap decision after winning knife round, 0=unlimited");
@@ -537,7 +538,7 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
   int client = GetClientOfUserId(event.GetInt("userid"));
   EventLogger_PlayerDisconnect(client);
 
-  if (g_EndMatchOnEmptyServerCvar.BoolValue && g_GameState > Get5State_Warmup && !g_IsMatchOver &&
+  if (g_EndMatchOnEmptyServerCvar.BoolValue && g_GameState > Get5State_Warmup && !g_IsMapOver &&
       g_GameState < Get5State_PostGame && (GetTeam1ClientCount() <= 1 || GetTeam2ClientCount() <= 1)) {
     Get5_MessageToAll("%t", "CancelMatchFullTeamDisconnected");
     ChangeState(Get5State_None);
@@ -549,7 +550,7 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
 public void OnMapStart() {
   g_MapChangePending = false;
   g_HasKnifeRoundStarted = false;
-  g_IsMatchOver = false;
+  g_IsMapOver = false;
   DeleteOldBackups();
 
   LOOP_TEAMS(team) {
@@ -619,7 +620,7 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
         ChangeState(Get5State_None);
         EndSeries();
       }
-      else if (GetMatchClientCount() >= (g_PlayersPerTeam * 2) - g_RemainingMatchPlayers.IntValue) {
+      else if (GetMatchClientCount() >= (g_PlayersPerTeam * 2) - g_UnconnectedPlayersRemaining.IntValue) {
         if (!g_HasKnifeRoundStarted) {
           StartGame(true);
         }
@@ -828,7 +829,7 @@ public Action Timer_ReplenishMoney(Handle timer, int client) {
 public Action Event_MatchOver(Event event, const char[] name, bool dontBroadcast) {
   LogDebug("Event_MatchOver");
   if (g_GameState == Get5State_Live) {
-    g_IsMatchOver = true;
+    g_IsMapOver = true;
     // Figure out who won
     int t1score = CS_GetTeamScore(MatchTeamToCSTeam(MatchTeam_Team1));
     int t2score = CS_GetTeamScore(MatchTeamToCSTeam(MatchTeam_Team2));
@@ -971,7 +972,7 @@ public void KickClientsOnEnd() {
 }
 
 public void EndSeries() {
-  g_IsMatchOver = false;
+  g_IsMapOver = false;
   DelayFunction(10.0, KickClientsOnEnd);
   StopRecording();
 
