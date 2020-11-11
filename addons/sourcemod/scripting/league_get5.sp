@@ -613,7 +613,7 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
       RestoreGet5Backup();
       return Plugin_Continue;
     }
-    
+
     if (g_WarmupTimeLeft == 0) {
       if (GetMatchClientCount() == 0) {
         g_ForceWinnerSignal = true;
@@ -636,7 +636,7 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
       g_WarmupTimeLeft = g_TeamTimeToStartCvar.IntValue;
       return Plugin_Stop;
     }
-    
+
     g_WarmupTimeLeft--;
   }
 
@@ -1195,7 +1195,7 @@ public void StartGame(bool knifeRound) {
     }
 
     g_KnifeChangedCvars = ExecuteAndSaveCvars(KNIFE_CONFIG);
-    CreateTimer(0.1, StartKnifeRound);
+    CreateTimer(1.0, StartKnifeRound);
   } else {
     LogDebug("StartGame: about to go live");
     ChangeState(Get5State_GoingLive);
