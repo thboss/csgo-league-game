@@ -150,6 +150,9 @@ native bool Get5_GetMatchStats(KeyValues kv);
 // Increases an (integer-typed) player statistic in the plugin's stats keyvalue structure.
 native int Get5_IncreasePlayerStat(int client, const char[] statName, int amount = 1);
 
+// Gets demo file name.
+native void Get5_GetDemoFileName(char[] demoName, int length);
+
 // Series stats (root section)
 #define STAT_SERIESWINNER "winner"
 #define STAT_SERIESTYPE "series_type"
