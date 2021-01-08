@@ -9,21 +9,21 @@
 #pragma newdecls required
 
 int g_iMatchID = -1;
-bool g_bFailedMatch = false;
 
 ConVar g_CVDiscordWebhook;
 ConVar g_CVSiteURL;
 ConVar g_CVUsername;
 ConVar g_CVEmbedColour;
 ConVar g_CVEmbedAvatar;
+ConVar g_CVDemoURL;
 
 ArrayList ga_sWinningPlayers;
 
 public Plugin myinfo = {
 	name = "[League] Match Result",
-	author = "The Doggy, B3none, PandahChan",
+	author = "The Doggy, B3none, PandahChan, TheBO$$",
 	description = "Post the final score in Discord via Webhook",
-	version = "1.0.0",
+	version = "1.1.0",
 	url = "https://github.com/csgo-league"
 };
 
@@ -31,41 +31,32 @@ public void OnPluginStart() {
 	ga_sWinningPlayers = new ArrayList(64);
 
 	g_CVDiscordWebhook = CreateConVar("sm_discord_webhook", "", "Discord web hook endpoint", FCVAR_PROTECTED);
-	g_CVSiteURL = CreateConVar("league_discord_results_site_url", "", "Website url for viewing scores", FCVAR_PROTECTED);
+	g_CVSiteURL = CreateConVar("league_discord_results_site_url", "", "Website url for viewing scores (Don't set Slash at end)", FCVAR_PROTECTED);
 	g_CVUsername = CreateConVar("league_discord_results_username", "League Results", "Username to use for webhook", FCVAR_PROTECTED);
 	g_CVEmbedColour = CreateConVar("league_discord_results_embed_color", "16741688", "Color to use for webhook (Must be decimal value)", FCVAR_PROTECTED);
-	g_CVEmbedAvatar = CreateConVar("league_discord_results_embed_avatar", "https://avatars1.githubusercontent.com/u/51230829", "Avatar to use for webhook", FCVAR_PROTECTED);	
+	g_CVEmbedAvatar = CreateConVar("league_discord_results_embed_avatar", "https://avatars1.githubusercontent.com/u/51230829", "Avatar to use for webhook", FCVAR_PROTECTED);
+	g_CVDemoURL = CreateConVar("league_discord_results_demo_url", "http://example.com/demos", "Demo path url (Don't set Slash at end)", FCVAR_PROTECTED);
 
 	AutoExecConfig(true, "league_discord_results");
 }
-
-public void Get5_OnGameStateChanged(Get5State oldState, Get5State newState)
-{
-	if (newState != Get5State_None) {
-		return;
-	}
-	else if (oldState > Get5State_None && oldState < Get5State_GoingLive) {
-		g_bFailedMatch = true;
-		SendReport();
-	}
-	g_bFailedMatch = false;
-}
-
 
 public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Score, int team2Score, int mapNumber) {
 	static float fTime;
 	if (GetGameTime() - fTime < 1.0) {
 		return;
 	}
+
 	SendReport();
+	ServerCommand("sm_autobandisconnect_enable 0");
 }
 
 public void SendReport() {
-	char sWebHook[128], sUserName[128], sSiteURL[128], sAvatarURL[128];
+	char sWebHook[128], sUserName[128], sSiteURL[128], sAvatarURL[128], sDemoURL[128];
 	g_CVDiscordWebhook.GetString(sWebHook, sizeof(sWebHook));
 	g_CVUsername.GetString(sUserName, sizeof(sUserName));
 	g_CVSiteURL.GetString(sSiteURL, sizeof(sSiteURL));
 	g_CVEmbedAvatar.GetString(sAvatarURL, sizeof(sAvatarURL));
+	g_CVDemoURL.GetString(sDemoURL, sizeof(sDemoURL));
 
 	if (StrEqual(sWebHook, "") || StrEqual(sSiteURL, "") || StrEqual(sAvatarURL, "")) {
 		LogError("Missing Webhook Endpoint, Site Url or Embed Avatar Url.");
@@ -76,16 +67,18 @@ public void SendReport() {
 	int iCTScore = CS_GetTeamScore(CS_TEAM_CT);
 	int iWinners = 0;
 	bool bDraw = false;
-	char matchid[64];
+	char matchid[64], mapName[64], demoName[128];
 	Get5_GetMatchID(matchid, sizeof(matchid));
 	g_iMatchID = StringToInt(matchid);
-	
+	GetCurrentMap(mapName, sizeof(mapName));
+	Get5_GetDemoFileName(demoName, sizeof(demoName));
+
 	if (iTScore > iCTScore) {
-	    iWinners = CS_TEAM_T;
+		iWinners = CS_TEAM_T;
 	} else if (iCTScore > iTScore) {
-	    iWinners = CS_TEAM_CT;
+		iWinners = CS_TEAM_CT;
 	} else if (iTScore == iCTScore) {
-	    bDraw = true;
+		bDraw = true;
 	}
 
 	Handle jRequest = json_object();
@@ -103,18 +96,14 @@ public void SendReport() {
 	GetConVarString(FindConVar("mp_teamname_1"), teamName1, sizeof(teamName1));
 	GetConVarString(FindConVar("mp_teamname_2"), teamName2, sizeof(teamName2));
 	
-	if (g_bFailedMatch) {
-		Format(sWinTitle, sizeof(sWinTitle), "Match was failed (not all players join the server)");
-	}
-	else if (bDraw) {
+
+	if (bDraw) {
 		Format(sWinTitle, sizeof(sWinTitle), "Match was a draw at %i:%i!", iTScore, iCTScore);
-	}
-	else if (iWinners == CS_TEAM_T) {
+	} else if (iWinners == CS_TEAM_T) {
 		Format(sWinTitle, sizeof(sWinTitle), "%s just won %i:%i!", teamName1, iTScore, iCTScore);
-	} 
-	else {
+	} else {
 		Format(sWinTitle, sizeof(sWinTitle), "%s just won %i:%i!", teamName2, iCTScore, iTScore);
-    }
+	}
 
 	json_object_set_new(jContentAuthor, "name", json_string(sWinTitle));
 	Format(sBuffer, sizeof sBuffer, "%s/match/%i", sSiteURL, g_iMatchID);
@@ -141,8 +130,9 @@ public void SendReport() {
 		}
 	}
 	
-
-	len += Format(sDescription[len], sizeof(sDescription) - len, "\n[View more](%s/match/%i)", sSiteURL, g_iMatchID);
+	len += Format(sDescription[len], sizeof(sDescription) - len, "\nMap: %s", mapName);
+	len += Format(sDescription[len], sizeof(sDescription) - len, "\n[View more](%s/match/%i/%s)", sSiteURL, g_iMatchID, mapName);
+	len += Format(sDescription[len], sizeof(sDescription) - len, "\n[Download demo](%s/%s)", sDemoURL, demoName);
 	json_object_set_new(jContent, "description", json_string(sDescription));
 	ga_sWinningPlayers.Clear();
 
@@ -163,13 +153,13 @@ public void SendReport() {
 
 	if (!SteamWorks_SendHTTPRequest(hRequest)) {
 		LogError("HTTP request failed, request was null");
-    }
+	}
 }
 
 public int OnHTTPRequestComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode) {
 	if (!bRequestSuccessful || eStatusCode != k_EHTTPStatusCode204NoContent) {
 		LogError("HTTP request failed, status code: %i", eStatusCode);
-    }
+	}
 
 	CloseHandle(hRequest);
 }

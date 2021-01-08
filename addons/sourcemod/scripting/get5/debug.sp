@@ -101,7 +101,7 @@ static void AddGlobalStateInfo(File f) {
   // TODO: write g_MapSides (it's not a string so WriteArrayList doesn't work).
 
   f.WriteLine("g_MatchTitle = %s", g_MatchTitle);
-  f.WriteLine("g_PlayersPerTeam = %d", g_PlayersPerTeam);
+  f.WriteLine("g_TotalPlayers = %d", g_TotalPlayers);
   f.WriteLine("g_SkipVeto = %d", g_SkipVeto);
   f.WriteLine("g_MatchSideType = %d", g_MatchSideType);
   f.WriteLine("g_InScrimMode = %d", g_InScrimMode);

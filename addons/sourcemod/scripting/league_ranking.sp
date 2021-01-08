@@ -490,11 +490,7 @@ public Action Event_VipEscaped(Handle event, const char[] name, bool dontBroadca
 }
 
 public Action Event_VipKilled(Handle event, const char[] name, bool dontBroadcast) {
-	if (!g_bEnabled || g_MinimumPlayers > GetCurrentPlayers()) {
-		return;
-	}
-
-	if (!isMatchLive()) {
+	if (!g_bEnabled || g_MinimumPlayers > GetCurrentPlayers() || !isMatchLive()) {
 		return;
 	}
 
@@ -1379,7 +1375,7 @@ public Action RankConnectCallback(int client, int rank, any data) {
 }
 
 public Action Event_PlayerDisconnect(Handle event, const char[] name, bool dontBroadcast) {
-	if (!g_bAnnounceDisconnect) {
+	if (!g_bAnnounceDisconnect || !isMatchLive()) {
 		return;
 	}
 
@@ -1704,16 +1700,5 @@ public void OnConVarChanged(Handle convar, const char[] oldValue, const char[] n
 bool isMatchLive()
 {
 	Get5State matchState = Get5_GetGameState();
-
-	if (matchState == Get5State_None
-		|| matchState == Get5State_PreVeto
-		|| matchState == Get5State_Veto
-		|| matchState == Get5State_Warmup
-		|| matchState == Get5State_KnifeRound
-		|| matchState == Get5State_WaitingForKnifeRoundDecision)
-	{
-		return false;
-	}
-
-	return true;	
+	return matchState == Get5State_Live || matchState == Get5State_PostGame;
 }

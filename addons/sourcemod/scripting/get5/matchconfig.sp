@@ -3,7 +3,7 @@
 #define REMOTE_CONFIG_PATTERN "remote_config%d.json"
 #define CONFIG_MATCHID_DEFAULT "matchid"
 #define CONFIG_MATCHTITLE_DEFAULT "Map {MAPNUMBER} of {MAXMAPS}"
-#define CONFIG_PLAYERSPERTEAM_DEFAULT 5
+#define CONFIG_TOTALPLAYERS_DEFAULT 10
 #define CONFIG_MINPLAYERSTOREADY_DEFAULT 0
 #define CONFIG_MINSPECTATORSTOREADY_DEFAULT 0
 #define CONFIG_SPECTATORSNAME_DEFAULT "casters"
@@ -27,6 +27,7 @@ stock bool LoadMatchConfig(const char[] config, bool restoreBackup = false) {
   }
 
   g_WarmupTimeLeft = g_TeamTimeToStartCvar.IntValue;
+  g_BO2Match = false;
   g_ForceWinnerSignal = false;
   g_ForcedWinner = MatchTeam_TeamNone;
 
@@ -260,7 +261,7 @@ public void WriteMatchToKv(KeyValues kv) {
   kv.SetNum("maps_to_win", g_MapsToWin);
   kv.SetNum("bo2_series", g_BO2Match);
   kv.SetNum("skip_veto", g_SkipVeto);
-  kv.SetNum("players_per_team", g_PlayersPerTeam);
+  kv.SetNum("total_players", g_TotalPlayers);
   kv.SetString("match_title", g_MatchTitle);
 
   kv.SetNum("favored_percentage_team1", g_FavoredTeamPercentage);
@@ -327,7 +328,7 @@ static bool LoadMatchFromKv(KeyValues kv) {
   kv.GetString("matchid", g_MatchID, sizeof(g_MatchID), CONFIG_MATCHID_DEFAULT);
   g_InScrimMode = kv.GetNum("scrim") != 0;
   kv.GetString("match_title", g_MatchTitle, sizeof(g_MatchTitle), CONFIG_MATCHTITLE_DEFAULT);
-  g_PlayersPerTeam = kv.GetNum("players_per_team", CONFIG_PLAYERSPERTEAM_DEFAULT);
+  g_TotalPlayers = kv.GetNum("total_players", CONFIG_TOTALPLAYERS_DEFAULT);
   g_SkipVeto = kv.GetNum("skip_veto", CONFIG_SKIPVETO_DEFAULT) != 0;
 
   // bo2_series and maps_to_win are deprecated. They are used if provided, but otherwise
@@ -433,8 +434,8 @@ static bool LoadMatchFromJson(JSON_Object json) {
   json_object_get_string_safe(json, "match_title", g_MatchTitle, sizeof(g_MatchTitle),
                               CONFIG_MATCHTITLE_DEFAULT);
 
-  g_PlayersPerTeam =
-      json_object_get_int_safe(json, "players_per_team", CONFIG_PLAYERSPERTEAM_DEFAULT);
+  g_TotalPlayers =
+      json_object_get_int_safe(json, "total_players", CONFIG_TOTALPLAYERS_DEFAULT);
   g_SkipVeto = json_object_get_bool_safe(json, "skip_veto", CONFIG_SKIPVETO_DEFAULT);
 
   // bo2_series and maps_to_win are deprecated. They are used if provided, but otherwise
@@ -850,7 +851,7 @@ public Action Command_CreateMatch(int client, int args) {
   kv.SetString("matchid", matchid);
   kv.SetNum("maps_to_win", 1);
   kv.SetNum("skip_veto", 1);
-  kv.SetNum("players_per_team", 5);
+  kv.SetNum("total_players", 10);
 
   kv.JumpToKey("maplist", true);
   kv.SetString(matchMap, KEYVALUE_STRING_PLACEHOLDER);

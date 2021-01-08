@@ -105,20 +105,10 @@ stock int GetMatchClientCount() {
   return clients;
 }
 
-stock int GetTeam1ClientCount() {
+stock int GetTeamClientsCount(MatchTeam team) {
   int clients = 0;
   for (int i = 1; i <= MaxClients; i++) {
-    if (IsPlayer(i) && GetClientMatchTeam(i) == MatchTeam_Team1){
-      clients++;
-    }
-  }
-  return clients;
-}
-
-stock int GetTeam2ClientCount() {
-  int clients = 0;
-  for (int i = 1; i <= MaxClients; i++) {
-    if (IsPlayer(i) && GetClientMatchTeam(i) == MatchTeam_Team2){
+    if (IsPlayer(i) && GetClientMatchTeam(i) == team){
       clients++;
     }
   }

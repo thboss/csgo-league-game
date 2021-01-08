@@ -104,7 +104,7 @@ char g_TeamMatchTexts[MATCHTEAM_COUNT][MAX_CVAR_LENGTH];
 char g_MatchTitle[MAX_CVAR_LENGTH];
 int g_FavoredTeamPercentage = 0;
 char g_FavoredTeamText[MAX_CVAR_LENGTH];
-int g_PlayersPerTeam = 5;
+int g_TotalPlayers = 10;
 bool g_SkipVeto = false;
 float g_VetoMenuTime = 0.0;
 MatchSideType g_MatchSideType = MatchSideType_Standard;
@@ -467,7 +467,7 @@ public void OnClientAuthorized(int client, const char[] auth) {
       KickClient(client, "%t", "YourAreNotAPlayerInfoMessage");
     } else {
       int teamCount = CountPlayersOnMatchTeam(team, client);
-      if (teamCount >= g_PlayersPerTeam && !g_CoachingEnabledCvar.BoolValue) {
+      if (teamCount >= g_TotalPlayers / 2 && !g_CoachingEnabledCvar.BoolValue) {
         KickClient(client, "%t", "TeamIsFullInfoMessage");
       }
     }
@@ -496,7 +496,7 @@ public void OnClientPutInServer(int client) {
       EnsurePausedWarmup();
     }
 
-    if (connectedPlayers == g_PlayersPerTeam * 2 && g_WarmupTimeLeft > 45) {
+    if (connectedPlayers == g_TotalPlayers && g_WarmupTimeLeft > 45) {
         g_WarmupTimeLeft = 45;
         EndWarmup(45);
     }
@@ -539,7 +539,7 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
   EventLogger_PlayerDisconnect(client);
 
   if (g_EndMatchOnEmptyServerCvar.BoolValue && g_GameState > Get5State_Warmup && !g_IsMapOver &&
-      g_GameState < Get5State_PostGame && (GetTeam1ClientCount() <= 1 || GetTeam2ClientCount() <= 1)) {
+      g_GameState < Get5State_PostGame && (GetTeamClientsCount(MatchTeam_Team1) <= 1 || GetTeamClientsCount(MatchTeam_Team2) <= 1)) {
     Get5_MessageToAll("%t", "CancelMatchFullTeamDisconnected");
     ChangeState(Get5State_None);
     AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
@@ -620,9 +620,16 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
         ChangeState(Get5State_None);
         EndSeries();
       }
-      else if (GetMatchClientCount() >= (g_PlayersPerTeam * 2) - g_UnconnectedPlayersRemaining.IntValue) {
+      else if (GetMatchClientCount() >= g_TotalPlayers - g_UnconnectedPlayersRemaining.IntValue) {
+        LogDebug("Timer_WaitingForConnectPlayers: all players have connected");
         if (!g_HasKnifeRoundStarted) {
-          StartGame(true);
+          if (g_MapSides.Get(GetMapNumber()) == SideChoice_KnifeRound) {
+            LogDebug("Timer_WaitingForConnectPlayers: starting with a knife round");
+            StartGame(true);
+          } else {
+            LogDebug("Timer_WaitingForConnectPlayers: starting without a knife round");
+            StartGame(false);
+          }
         }
       }
       else {
