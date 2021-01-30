@@ -178,7 +178,7 @@ bool g_PendingSideSwap = false;
 
 Handle g_KnifeChangedCvars = null;
 Handle g_MatchConfigChangedCvars = null;
-
+Handle g_WaitingForConnectPlayers = null;
 /** Forwards **/
 Handle g_OnBackupRestore = null;
 Handle g_OnDemoFinished = null;
@@ -329,6 +329,8 @@ public void OnPluginStart() {
   /** Create and exec plugin's configuration file **/
   AutoExecConfig(true, "get5");
 
+  ServerCommand("sv_hibernate_when_empty 0");
+
   g_GameStateCvar =
       CreateConVar("get5_game_state", "0", "Current game state (see get5.inc)", FCVAR_DONTRECORD);
   g_LastGet5BackupCvar =
@@ -350,7 +352,7 @@ public void OnPluginStart() {
   AddAliasedCommand("stop", Command_Stop, "Elects to stop the game to reload a backup file");
   AddAliasedCommand("stay", Command_Stay,
                     "Elects to stay on the current team after winning a knife round");
-  AddAliasedCommand("swap", Command_Swap,
+  AddAliasedCommand("switch", Command_Switch,
                     "Elects to swap the current teams after winning a knife round");
   AddAliasedCommand("t", Command_T, "Elects to start on T side after winning a knife round");
   AddAliasedCommand("ct", Command_Ct, "Elects to start on CT side after winning a knife round");
@@ -576,7 +578,11 @@ public void OnMapStart() {
 
     g_WarmupTimeLeft = g_TeamTimeToStartCvar.IntValue;
     StartWarmup();
-    CreateTimer(1.0, Timer_WaitingForConnectPlayers, _, TIMER_REPEAT);
+
+    if (g_WaitingForConnectPlayers != null) {
+      delete g_WaitingForConnectPlayers;
+    }
+    g_WaitingForConnectPlayers = CreateTimer(1.0, Timer_WaitingForConnectPlayers, _, TIMER_REPEAT);
   }
 }
 
@@ -641,6 +647,8 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
       }
 
       g_WarmupTimeLeft = g_TeamTimeToStartCvar.IntValue;
+      g_WaitingForConnectPlayers = null;
+
       return Plugin_Stop;
     }
 

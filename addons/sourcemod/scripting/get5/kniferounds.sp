@@ -62,7 +62,14 @@ static bool AwaitingKnifeDecision(int client) {
 }
 
 public Action Command_Stay(int client, int args) {
+  MatchTeam team = GetCaptainTeam(client);
+
   if (AwaitingKnifeDecision(client)) {
+    if (team != g_KnifeWinnerTeam) {
+      Get5_Message(client, "You are not the team's captain");
+      return Plugin_Handled;
+    }
+
     EndKnifeRound(false);
     Get5_MessageToAll("%t", "TeamDecidedToStayInfoMessage",
                       g_FormattedTeamNames[g_KnifeWinnerTeam]);
@@ -70,7 +77,7 @@ public Action Command_Stay(int client, int args) {
   return Plugin_Handled;
 }
 
-public Action Command_Swap(int client, int args) {
+public Action Command_Switch(int client, int args) {
   if (AwaitingKnifeDecision(client)) {
     EndKnifeRound(true);
     Get5_MessageToAll("%t", "TeamDecidedToSwapInfoMessage",
@@ -87,7 +94,7 @@ public Action Command_Ct(int client, int args) {
     if (GetClientTeam(client) == CS_TEAM_CT)
       FakeClientCommand(client, "sm_stay");
     else if (GetClientTeam(client) == CS_TEAM_T)
-      FakeClientCommand(client, "sm_swap");
+      FakeClientCommand(client, "sm_switch");
   }
 
   LogDebug("cs team = %d", GetClientTeam(client));
@@ -102,7 +109,7 @@ public Action Command_T(int client, int args) {
     if (GetClientTeam(client) == CS_TEAM_T)
       FakeClientCommand(client, "sm_stay");
     else if (GetClientTeam(client) == CS_TEAM_CT)
-      FakeClientCommand(client, "sm_swap");
+      FakeClientCommand(client, "sm_switch");
   }
   return Plugin_Handled;
 }
