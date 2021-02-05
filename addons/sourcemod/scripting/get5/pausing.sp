@@ -3,7 +3,7 @@ public bool Pauseable() {
 }
 
 public Action Command_TechPause(int client, int args) {
-  if (!g_AllowTechPauseCvar.BoolValue || !Pauseable() || IsPaused()) {
+  if (!g_AllowTechPauseCvar.BoolValue || !Pauseable() || IsPaused() || g_GameState == Get5State_None) {
     return Plugin_Handled;
   }
 
@@ -22,7 +22,7 @@ public Action Command_TechPause(int client, int args) {
 }
 
 public Action Command_Pause(int client, int args) {
-  if (!Pauseable() || IsPaused()) {
+  if (!Pauseable() || IsPaused() || g_GameState == Get5State_None) {
     return Plugin_Handled;
   }
 
@@ -131,7 +131,7 @@ public Action Timer_PauseTimeCheck(Handle timer, int data) {
 }
 
 public Action Command_Unpause(int client, int args) {
-  if (!IsPaused())
+  if (!IsPaused() || g_GameState == Get5State_None)
     return Plugin_Handled;
 
   // Let console force unpause

@@ -458,6 +458,10 @@ public void OnPluginStart() {
 }
 
 public void OnClientAuthorized(int client, const char[] auth) {
+  if (g_GameState == Get5State_None) {
+    return;
+  }
+
   g_MovingClientToCoach[client] = false;
   if (StrEqual(auth, "BOT", false)) {
     return;
@@ -488,11 +492,15 @@ public void OnClientPostAdminCheck(int client) {
 }
 
 public void OnClientPutInServer(int client) {
+  if (g_GameState == Get5State_None) {
+    return;
+  }
+
   if (IsFakeClient(client)) {
     return;
   }
   CheckAutoLoadConfig();
-  if (g_GameState <= Get5State_Warmup && g_GameState != Get5State_None) {
+  if (g_GameState <= Get5State_Warmup) {
     int connectedPlayers = GetMatchClientCount();
     if (connectedPlayers <= 1) {
       EnsurePausedWarmup();
@@ -508,7 +516,11 @@ public void OnClientPutInServer(int client) {
 }
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs) {
-  if (StrEqual(command, "say") && g_GameState != Get5State_None) {
+  if (g_GameState == Get5State_None) {
+    return;
+  }
+
+  if (StrEqual(command, "say")) {
     EventLogger_ClientSay(client, sArgs);
   }
 
@@ -529,14 +541,24 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
  * put on that team and spawned, so we can't allow that.
  */
 public Action Event_PlayerConnectFull(Event event, const char[] name, bool dontBroadcast) {
+  if (g_GameState == Get5State_None) {
+    return Plugin_Continue;
+  }
+
   int client = GetClientOfUserId(event.GetInt("userid"));
   EventLogger_PlayerConnect(client);
-  if (client > 0) {
+  if (client != 0 && IsClientInGame(client) && !IsFakeClient(client)) {
     SetEntPropFloat(client, Prop_Send, "m_fForceTeam", 3600.0);
+    CreateTimer(0.5, AssignTeamOnConnect, client);
   }
+  return Plugin_Continue;
 }
 
 public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBroadcast) {
+  if (g_GameState == Get5State_None) {
+    return Plugin_Continue;
+  }
+
   int client = GetClientOfUserId(event.GetInt("userid"));
   EventLogger_PlayerDisconnect(client);
 
@@ -547,6 +569,7 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
     AcceptEntityInput(CreateEntityByName("game_end"), "EndGame");
     EndSeries();
   }
+  return Plugin_Continue;
 }
 
 public void OnMapStart() {
@@ -711,6 +734,8 @@ public Action Command_EndMatch(int client, int args) {
   if (g_ActiveVetoMenu != null) {
     g_ActiveVetoMenu.Cancel();
   }
+
+  ServerCommand("sm_map de_mirage");
 
   return Plugin_Handled;
 }
@@ -1021,6 +1046,10 @@ public void EndSeries() {
 }
 
 public Action Event_RoundPreStart(Event event, const char[] name, bool dontBroadcast) {
+  if (g_GameState == Get5State_None) {
+    return Plugin_Continue;
+  }
+
   LogDebug("Event_RoundPreStart");
   if (g_PendingSideSwap) {
     g_PendingSideSwap = false;
@@ -1036,6 +1065,7 @@ public Action Event_RoundPreStart(Event event, const char[] name, bool dontBroad
   if (g_GameState >= Get5State_Warmup && !g_DoingBackupRestoreNow) {
     WriteBackup();
   }
+  return Plugin_Continue;
 }
 
 public Action Event_FreezeEnd(Event event, const char[] name, bool dontBroadcast) {

@@ -755,3 +755,17 @@ public Action MapReserved(int client, const char[] command, int args) {
 
 	return Plugin_Continue;
 }
+
+public Action AssignTeamOnConnect(Handle timer, int client) {
+  if (IsClientInGame(client)) {
+    char steamid[64];
+
+    GetClientAuthId(client, AuthId_SteamID64, steamid, sizeof(steamid));
+    ChangeClientTeam(client, Get5_MatchTeamToCSTeam(Get5_GetPlayerTeam(steamid)));
+
+    if (InWarmup()) {
+        CS_RespawnPlayer(client);
+    }
+  }
+  return Plugin_Continue;
+}
