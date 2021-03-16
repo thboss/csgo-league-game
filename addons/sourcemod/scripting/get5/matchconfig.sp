@@ -3,7 +3,7 @@
 #define REMOTE_CONFIG_PATTERN "remote_config%d.json"
 #define CONFIG_MATCHID_DEFAULT "matchid"
 #define CONFIG_MATCHTITLE_DEFAULT "Map {MAPNUMBER} of {MAXMAPS}"
-#define CONFIG_TOTALPLAYERS_DEFAULT 10
+#define CONFIG_PLAYERSPERTEAM_DEFAULT 5
 #define CONFIG_MINPLAYERSTOREADY_DEFAULT 0
 #define CONFIG_MINSPECTATORSTOREADY_DEFAULT 0
 #define CONFIG_SPECTATORSNAME_DEFAULT "casters"
@@ -261,7 +261,9 @@ public void WriteMatchToKv(KeyValues kv) {
   kv.SetNum("maps_to_win", g_MapsToWin);
   kv.SetNum("bo2_series", g_BO2Match);
   kv.SetNum("skip_veto", g_SkipVeto);
-  kv.SetNum("total_players", g_TotalPlayers);
+  kv.SetNum("players_per_team", g_PlayersPerTeam);
+  kv.SetNum("min_players_to_ready", g_MinPlayersToReady);
+  kv.SetNum("min_spectators_to_ready", g_MinSpectatorsToReady);
   kv.SetString("match_title", g_MatchTitle);
 
   kv.SetNum("favored_percentage_team1", g_FavoredTeamPercentage);
@@ -328,7 +330,9 @@ static bool LoadMatchFromKv(KeyValues kv) {
   kv.GetString("matchid", g_MatchID, sizeof(g_MatchID), CONFIG_MATCHID_DEFAULT);
   g_InScrimMode = kv.GetNum("scrim") != 0;
   kv.GetString("match_title", g_MatchTitle, sizeof(g_MatchTitle), CONFIG_MATCHTITLE_DEFAULT);
-  g_TotalPlayers = kv.GetNum("total_players", CONFIG_TOTALPLAYERS_DEFAULT);
+  g_PlayersPerTeam = kv.GetNum("players_per_team", CONFIG_PLAYERSPERTEAM_DEFAULT);
+  g_MinPlayersToReady = kv.GetNum("min_players_to_ready", CONFIG_MINPLAYERSTOREADY_DEFAULT);
+  g_MinSpectatorsToReady = kv.GetNum("min_spectators_to_ready", CONFIG_MINSPECTATORSTOREADY_DEFAULT);
   g_SkipVeto = kv.GetNum("skip_veto", CONFIG_SKIPVETO_DEFAULT) != 0;
 
   // bo2_series and maps_to_win are deprecated. They are used if provided, but otherwise
@@ -433,9 +437,12 @@ static bool LoadMatchFromJson(JSON_Object json) {
   g_InScrimMode = json_object_get_bool_safe(json, "scrim", false);
   json_object_get_string_safe(json, "match_title", g_MatchTitle, sizeof(g_MatchTitle),
                               CONFIG_MATCHTITLE_DEFAULT);
-
-  g_TotalPlayers =
-      json_object_get_int_safe(json, "total_players", CONFIG_TOTALPLAYERS_DEFAULT);
+  g_PlayersPerTeam =
+      json_object_get_int_safe(json, "players_per_team", CONFIG_PLAYERSPERTEAM_DEFAULT);
+  g_MinPlayersToReady =
+      json_object_get_int_safe(json, "min_players_to_ready", CONFIG_MINPLAYERSTOREADY_DEFAULT);
+  g_MinSpectatorsToReady = json_object_get_int_safe(json, "min_spectators_to_ready",
+                                                    CONFIG_MINSPECTATORSTOREADY_DEFAULT);
   g_SkipVeto = json_object_get_bool_safe(json, "skip_veto", CONFIG_SKIPVETO_DEFAULT);
 
   // bo2_series and maps_to_win are deprecated. They are used if provided, but otherwise

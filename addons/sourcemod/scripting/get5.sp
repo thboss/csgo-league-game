@@ -78,7 +78,6 @@ ConVar g_TimeFormatCvar;
 ConVar g_VetoConfirmationTimeCvar;
 ConVar g_VetoCountdownCvar;
 ConVar g_WarmupCfgCvar;
-ConVar g_UnconnectedPlayersRemaining;
 
 // Autoset convars (not meant for users to set)
 ConVar g_GameStateCvar;
@@ -104,7 +103,9 @@ char g_TeamMatchTexts[MATCHTEAM_COUNT][MAX_CVAR_LENGTH];
 char g_MatchTitle[MAX_CVAR_LENGTH];
 int g_FavoredTeamPercentage = 0;
 char g_FavoredTeamText[MAX_CVAR_LENGTH];
-int g_TotalPlayers = 10;
+int g_PlayersPerTeam = 5;
+int g_MinPlayersToReady = 1;
+int g_MinSpectatorsToReady = 0;
 bool g_SkipVeto = false;
 float g_VetoMenuTime = 0.0;
 MatchSideType g_MatchSideType = MatchSideType_Standard;
@@ -309,8 +310,6 @@ public void OnPluginStart() {
   g_TeamTimeToStartCvar = CreateConVar(
       "get5_time_to_start", "0",
       "Time (in seconds) teams have to ready up before forfeiting the match, 0=unlimited");
-  g_UnconnectedPlayersRemaining = CreateConVar("get5_remaining_not_connected_players_to_start", "0",
-      "Number of remaining players are not connected to start the match on the warmup end, set to 0 to disable");
   g_TeamTimeToKnifeDecisionCvar = CreateConVar(
       "get5_time_to_make_knife_decision", "30",
       "Time (in seconds) a team has to make a !stay/!swap decision after winning knife round, 0=unlimited");
@@ -473,7 +472,7 @@ public void OnClientAuthorized(int client, const char[] auth) {
       KickClient(client, "%t", "YourAreNotAPlayerInfoMessage");
     } else {
       int teamCount = CountPlayersOnMatchTeam(team, client);
-      if (teamCount >= g_TotalPlayers / 2 && !g_CoachingEnabledCvar.BoolValue) {
+      if (teamCount >= g_PlayersPerTeam && !g_CoachingEnabledCvar.BoolValue) {
         KickClient(client, "%t", "TeamIsFullInfoMessage");
       }
     }
@@ -501,12 +500,12 @@ public void OnClientPutInServer(int client) {
   }
   CheckAutoLoadConfig();
   if (g_GameState <= Get5State_Warmup) {
-    int connectedPlayers = GetMatchClientCount();
+    int connectedPlayers = GetTeamClientsCount(MatchTeam_Team1) + GetTeamClientsCount(MatchTeam_Team2);
     if (connectedPlayers <= 1) {
       EnsurePausedWarmup();
     }
 
-    if (connectedPlayers == g_TotalPlayers && g_WarmupTimeLeft > 45) {
+    if (connectedPlayers == (g_PlayersPerTeam * 2) && g_WarmupTimeLeft > 45) {
         g_WarmupTimeLeft = 45;
         EndWarmup(45);
     }
@@ -644,12 +643,8 @@ public Action Timer_WaitingForConnectPlayers(Handle timer) {
     }
 
     if (g_WarmupTimeLeft == 0) {
-      if (GetMatchClientCount() == 0) {
-        g_ForceWinnerSignal = true;
-        ChangeState(Get5State_None);
-        EndSeries();
-      }
-      else if (GetMatchClientCount() >= g_TotalPlayers - g_UnconnectedPlayersRemaining.IntValue) {
+      if (GetTeamClientsCount(MatchTeam_Team1) >= g_MinPlayersToReady &&
+          GetTeamClientsCount(MatchTeam_Team2) >= g_MinPlayersToReady) {
         LogDebug("Timer_WaitingForConnectPlayers: all players have connected");
         if (!g_HasKnifeRoundStarted) {
           if (g_MapSides.Get(GetMapNumber()) == SideChoice_KnifeRound) {

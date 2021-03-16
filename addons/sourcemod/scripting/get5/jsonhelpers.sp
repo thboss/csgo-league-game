@@ -113,7 +113,6 @@ stock int AddJsonAuthsToList(JSON_Object json, const char[] key, ArrayList list,
       char[] buffer = new char[maxValueLength];
       for (int i = 0; i < array.Length; i++) {
         array.GetString(i, buffer, maxValueLength);
-
         char steam64[AUTH_LENGTH];
         if (ConvertAuthToSteam64(buffer, steam64)) {
           list.PushString(steam64);

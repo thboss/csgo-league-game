@@ -92,19 +92,6 @@ stock bool IsAuthedPlayer(int client) {
   return IsPlayer(client) && IsClientAuthorized(client);
 }
 
-/**
- * Returns the number of clients that are actual players in the game.
- */
-stock int GetMatchClientCount() {
-  int clients = 0;
-  for (int i = 1; i <= MaxClients; i++) {
-    if (IsPlayer(i) && IsPlayerTeam(GetClientMatchTeam(i))) {
-      clients++;
-    }
-  }
-  return clients;
-}
-
 stock int GetTeamClientsCount(MatchTeam team) {
   int clients = 0;
   for (int i = 1; i <= MaxClients; i++) {

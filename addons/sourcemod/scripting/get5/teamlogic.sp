@@ -70,7 +70,7 @@ public Action Command_JoinTeam(int client, const char[] command, int argc) {
     // SwitchPlayerTeam(client, csTeam);
     int count = CountPlayersOnCSTeam(csTeam);
 
-    if (count >= g_TotalPlayers / 2) {
+    if (count >= g_PlayersPerTeam) {
       if (!g_CoachingEnabledCvar.BoolValue) {
         KickClient(client, "%t", "TeamIsFullInfoMessage");
       } else {
